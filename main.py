@@ -1,8 +1,12 @@
 from collections import UserDict
-from datetime import date
+from datetime import datetime
 
 
 class PhoneError(Exception):
+    ...
+
+
+class DateError(Exception):
     ...
 
 
@@ -33,10 +37,13 @@ class Phone(Field):
 class Birthday():
 
     def __init__(self, birthday) -> None:
-        if isinstance(birthday, date):
+        if isinstance(birthday, datetime):
             self.birthday = birthday
         else:
             raise ValueError()
+
+    def __str__(self):
+        return f"Days to birthday: {self.days_to_birthday}"
 
 
 class Record:
@@ -46,10 +53,27 @@ class Record:
         self.phones = []
         if phone:
             self.add_phone(phone)
-        self.birthday = None
+        # if birthday:
+        self.birthday = birthday
 
     def add_phone(self, phone):
         self.phones.append(Phone(phone))
+
+    def add_birthday(self, birthday: Birthday):
+        self.birthday = birthday
+
+    def days_to_birthday(self) -> int:
+        if self.birthday:
+            current_date = datetime.today().date()
+            birthday = self.birthday.replace(year=current_date.year)
+            if birthday > current_date:
+                days_to_birthday = birthday - current_date
+            else:
+                birthday = birthday.replace(year=current_date.year + 1)
+                days_to_birthday = birthday - current_date
+        else:
+            raise DateError()
+        return days_to_birthday.days
 
     def edit_phone(self, old_phone, new_phone):
         for idx, phone in enumerate(self.phones):
@@ -71,7 +95,7 @@ class Record:
         raise PhoneError()
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, birthday: {self.birthday}"
 
 
 class AddressBook(UserDict):
@@ -111,6 +135,8 @@ def input_error(func):
             return "The phone number must contains only 10 digit."
         except PhoneError:
             return "This phone number doesn't exist in the dictionary."
+        except DateError:
+            return "Birthday date error"
     return inner
 
 
@@ -118,12 +144,17 @@ def input_error(func):
 def add_record(*args):
     name = args[0].lower()
     phone = args[1]
+    try:
+        if args[2]:
+            birthday = datetime.strptime(args[2], "%d/%m/%Y").date()
+    except:
+        birthday = None
     rec = customers.get(name)
     if rec:
         raise NameError
-    rec = Record(name, phone)
+    rec = Record(name, phone, birthday)
     customers.add_record(rec)
-    return f"Add name = {name}, phone = {phone}"
+    return f"Add name = {name}, phone = {phone}, birthday = {birthday}"
 
 
 @input_error
@@ -135,7 +166,7 @@ def change_record(*args):
     if rec:
         return rec.edit_phone(old_phone, new_phone)
     else:
-        raise KeyError
+        raise KeyError()
 
 
 @input_error
@@ -144,7 +175,7 @@ def find_record(*args):
     if customers.get(name):
         return customers.find(name)
     else:
-        raise KeyError
+        raise KeyError()
 
 
 @input_error
@@ -154,7 +185,7 @@ def del_record(*args):
         customers.delete(name)
         return f"Record with name {args[0].capitalize()} deleted."
     else:
-        raise KeyError
+        raise KeyError()
 
 
 @input_error
@@ -166,7 +197,7 @@ def add_phone(*args):
         rec.add_phone(new_phone)
         return f"{args[0].capitalize()}'s phone added another one {args[1]}"
     else:
-        raise KeyError
+        raise KeyError()
 
 
 @input_error
@@ -178,7 +209,7 @@ def find_phone(*args):
         find_phone = rec.find_phone(phone)
         return find_phone  # f'{name.value} : {find_phone}'
     else:
-        raise PhoneError
+        raise PhoneError()
 
 
 @input_error
@@ -190,7 +221,30 @@ def remove_phone(*args):
         rec.remove_phone(phone)
         return f'{phone} deleted.'
     else:
-        raise PhoneError
+        raise PhoneError()
+
+
+@input_error
+def add_birhday(*args):
+    name = args[0].lower()
+    birhday = datetime.strptime(args[1], "%d/%m/%Y")
+    rec = customers.get(name)
+    if rec:
+        rec.add_birthday(birhday.date())
+        return f"{args[0].capitalize()}'s birthday added {args[1]}"
+    else:
+        raise KeyError()
+
+
+@input_error
+def days_to_birthday(*args):
+    name = args[0].lower()
+    rec = customers.get(name)
+    if rec:
+        days = rec.days_to_birthday()
+        return f"{days} days to {name.capitalize()}'s birthday"
+    else:
+        raise KeyError()
 
 
 def unknown(*args):
@@ -208,8 +262,10 @@ def hello(*args):
 def help(*args):
     message = '''Use next commands:
     add 'name' 'phone'  - add name and phone number to the dictionary
+    add_b 'name' 'birthday' - add birthday date to the name in dictionary
     append 'name' 'phone'  - add phone number to the name in dictionary
     change 'name' 'old_phone' 'new_phone' - change phone number in this name
+    days_to_birthday 'name' - return number days to birhday
     delete 'name' - delete name and phones from the dictionary
     find 'name' - find info by name
     seek 'name' 'phone' - find phone for name in the dictionary
@@ -234,26 +290,28 @@ def phone(*args):
 
 
 COMMANDS = {add_record: "add",
-            add_phone: "append phone",
+            add_birhday: "add_b",
+            add_phone: "add_phone",
             change_record: "change",
+            days_to_birthday: "days_to_birthday",
             del_record: "delete",
             end_program: "exit",
             find_record: "find",
-            find_phone: 'seek',
+            find_phone: 'find_phone',
             hello: "hello",
             help: "help",
             phone: "phone",
-            show_all: "show all",
-            remove_phone: "remove phone"
+            show_all: "show_all",
+            remove_phone: "remove_phone"
             }
 
 
 def parser(text: str):
     for func, kw in COMMANDS.items():
-        # command = text.rstrip().split()
+        command = text.rstrip().split()
         # if kw == command[0].lower():
         #     return func, text[len(kw):].strip().split()
-        if text.lower().startswith(kw):
+        if text.lower().startswith(kw) and kw == command[0].lower():
             return func, text[len(kw):].strip().split()
     return unknown, []
 
