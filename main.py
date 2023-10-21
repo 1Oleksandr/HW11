@@ -1,5 +1,6 @@
 from collections import UserDict
 from datetime import datetime
+from itertools import islice
 
 
 class PhoneError(Exception):
@@ -28,19 +29,37 @@ class Name(Field):
 class Phone(Field):
 
     def __init__(self, value):
-        if len(value) == 10 and int(value):
-            self.value = value
+        self.__value = None
+        self.value = value
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, val):
+        if len(val) == 10 and int(val):
+            self.__value = val
         else:
             raise ValueError()
 
 
-class Birthday():
+class Birthday(Field):
 
     def __init__(self, birthday) -> None:
+        self.__birthday = None
+        self.birthday = birthday
+
+    @property
+    def birthday(self):
+        return self.__birthday
+
+    @birthday.setter
+    def birthday(self, birthday):
         if isinstance(birthday, datetime):
             self.birthday = birthday
         else:
-            raise ValueError()
+            raise DateError()
 
     def __str__(self):
         return f"Days to birthday: {self.days_to_birthday}"
@@ -53,7 +72,6 @@ class Record:
         self.phones = []
         if phone:
             self.add_phone(phone)
-        # if birthday:
         self.birthday = birthday
 
     def add_phone(self, phone):
@@ -117,6 +135,20 @@ class AddressBook(UserDict):
         # else:
         #     raise KeyError()
 
+    def iterator(self, n=None):
+        counter = 0
+        records = iter(self.data.values())
+        while counter < len(self.data):
+            rec = []
+            for i in islice(records, n):
+                rec.append(i)
+                print(i)
+            yield rec
+            if n:
+                counter += n
+            else:
+                break
+
 
 customers = AddressBook()
 
@@ -151,7 +183,7 @@ def add_record(*args):
         birthday = None
     rec = customers.get(name)
     if rec:
-        raise NameError
+        raise NameError()
     rec = Record(name, phone, birthday)
     customers.add_record(rec)
     return f"Add name = {name}, phone = {phone}, birthday = {birthday}"
@@ -207,7 +239,7 @@ def find_phone(*args):
     rec = customers.get(name)
     if rec:
         find_phone = rec.find_phone(phone)
-        return find_phone  # f'{name.value} : {find_phone}'
+        return find_phone
     else:
         raise PhoneError()
 
@@ -227,13 +259,16 @@ def remove_phone(*args):
 @input_error
 def add_birhday(*args):
     name = args[0].lower()
-    birhday = datetime.strptime(args[1], "%d/%m/%Y")
+    try:
+        birhday = datetime.strptime(args[1], "%d/%m/%Y")
+    except:
+        raise DateError()
     rec = customers.get(name)
     if rec:
         rec.add_birthday(birhday.date())
         return f"{args[0].capitalize()}'s birthday added {args[1]}"
     else:
-        raise KeyError()
+        raise DateError()
 
 
 @input_error
@@ -263,22 +298,33 @@ def help(*args):
     message = '''Use next commands:
     add 'name' 'phone'  - add name and phone number to the dictionary
     add_b 'name' 'birthday' - add birthday date to the name in dictionary
-    append 'name' 'phone'  - add phone number to the name in dictionary
+    add_phone 'name' 'phone'  - add phone number to the name in dictionary
     change 'name' 'old_phone' 'new_phone' - change phone number in this name
     days_to_birthday 'name' - return number days to birhday
     delete 'name' - delete name and phones from the dictionary
     find 'name' - find info by name
     seek 'name' 'phone' - find phone for name in the dictionary
     phone 'name' - show phone number for this name
-    remove phone 'name' 'phone' - remove phone for this name
-    show all  -  show all records in memory
+    remove_phone 'name' 'phone' - remove phone for this name
+    show_all  -  show all records in the dictionary
+    show_all 'N' - show records by N numbers
     exit - exit from bot'''
     return message
 
 
 def show_all(*args):
-    for name, record in customers.data.items():
-        print(record)
+    try:
+        if args[0]:
+            for rec in customers.iterator(int(args[0])):
+                # print(rec)
+                input("Press Enter for next records")
+    except:
+        for rec in customers.iterator():
+            ...
+            # print(rec)
+
+    # for name, record in customers.data.items():
+    #     print(record)
     return "There is all records in dictionary"
 
 
