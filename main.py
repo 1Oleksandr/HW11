@@ -148,7 +148,7 @@ class AddressBook(UserDict):
                 counter += n
             else:
                 break
-    
+
     def __str__(self):
         return "\n".join([str(r) for r in self.data.values()])
 
@@ -319,12 +319,9 @@ def show_all(*args):
     try:
         if args[0]:
             for rec in customers.iterator(int(args[0])):
-                # print(rec)
                 input("Press Enter for next records")
     except:
         return customers
-            # print(rec)
-
     # for name, record in customers.data.items():
     #     print(record)
     return "There is all records in dictionary"
